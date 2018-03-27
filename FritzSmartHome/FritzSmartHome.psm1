@@ -53,3 +53,40 @@ function Get-HtrMeasuredTemp {
         # Return
     Return $Temp
 }
+
+function Get-HtrDevices {
+    
+    Param (
+        [Parameter (Mandatory = $true)][string]$SID
+        )
+
+        [xml]$RawData = (Invoke-WebRequest -Uri "http://fritz.box/webservices/homeautoswitch.lua?&switchcmd=getdevicelistinfos&sid=$SID").Content
+
+        $Devices = $RawData.devicelist.device
+
+        $CustomObjects = $null
+
+        foreach ($Device in $Devices) {
+
+        $CustomObject = [PSCustomObject]@{
+            AIN =            [string]$Device.identifier -replace ' ',''
+            Name =           [string]$Device.name
+            Manufacturer =   [string]$Device.manufacturer
+            ProductName =    [string]$Device.productname
+            FirmWare =       [string]$Device.fwversion
+            Active =         ([bool]$DeviceLock = ([int]$Device.present))
+            Temperature =    [double]($Device.hkr.tist)/2
+            Offset =         [double]$Device.temperature.offset
+            TempDesired =    [double]($Device.hkr.tsoll)/2
+            TempEco =        [double]($Device.hkr.absenk)/2
+            TempComfort =    [double]($Device.hkr.komfort)/2
+            DeviceLock =     ([bool]$DeviceLock = ([int]$Device.hkr.devicelock))
+            ReplaceBattery = ([bool]$Replacebattery = ([int]$Device.hkr.batterylow))
+            }
+
+        [array]$CustomObjects += $CustomObject
+
+        }
+
+    Return $CustomObjects
+}
